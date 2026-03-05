@@ -1,0 +1,6 @@
+*__pycache__/
+*.egg-info/
+build/
+selective_scan_cuda_positive.cpython-310-x86_64-linux-gnu.so
+*.hip
+*_hip.*

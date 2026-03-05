@@ -1,0 +1,47 @@
+git diff 7b94b834830b40c64badb7d30870e467ccc65bfe
+diff --git a/ai-modules/wavesAI/model/aussm.py b/ai-modules/wavesAI/model/aussm.py
+index bd0d923..8c73c6a 100644
+--- a/ai-modules/wavesAI/model/aussm.py
++++ b/ai-modules/wavesAI/model/aussm.py
+@@ -885,7 +885,7 @@ class SSMauBlock(nn.Module):
+
+         x_bias = rearrange(self.xA_proj.bias, "(n dstate1) -> dstate1 n", n=n, dstate1=d_in)
+
+-        self.ssm_args = {
++        ssm_args = {
+             "u": rearrange(x, "b l d -> b d l").contiguous(),
+             "dt": rearrange(dt, "b l d -> b d l", l=l).contiguous(),
+             "x": x_param.contiguous() * (1 / np.sqrt(self.args.d_model)),
+@@ -896,9 +896,33 @@ class SSMauBlock(nn.Module):
+             "z": rearrange(z, "b l d -> b d l").contiguous()
+         }
+
+-        y = self.optimized_SSMa_function(**self.ssm_args)
++        with torch.cuda.amp.autocast(enabled=False):
++            # Force float32 for real-valued inputs the kernel expects
++            ssm_args["u"]  = ssm_args["u"].float()
++            ssm_args["dt"] = ssm_args["dt"].float()
++            ssm_args["x"]  = ssm_args["x"].float()
++            ssm_args["x_bias"] = ssm_args["x_bias"].float()
++            ssm_args["D"]  = ssm_args["D"].float()
++            ssm_args["z"]  = ssm_args["z"].float()
++
++            # Force complex64 for complex params (since ops.py uses .real/.imag)
++            for k in ("B", "C"):
++                T = ssm_args[k]
++                if not T.is_complex():
++                    if T.ndim > 0 and T.size(-1) == 2:
++                        T = torch.complex(T[..., 0].float(), T[..., 1].float())
++                    else:
++                        T = T.float().to(torch.complex64)
++                else:
++                    # ensure complex is complex64 (common expectation)
++                    if T.dtype != torch.complex64:
++                        T = T.to(torch.complex64)
++                ssm_args[k] = T.contiguous()
++
++            y = self.optimized_SSMa_function(**ssm_args)
+
+         y = rearrange(y, "b d l -> b l d")
++        y = y.to(dtype=x.dtype).contiguous()
+         return y

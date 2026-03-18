@@ -1,6 +1,6 @@
 # Evaluating Sequence Models on Word Problems and Related Prediction Tasks
 
-This is the official code repository for the paper: [Why Depth Matters in Parallelizable Sequence Models: A Lie Algebraic View]() (Link coming soon)
+This is the official code repository for the paper: [Why Depth Matters in Parallelizable Sequence Models: A Lie Algebraic View](https://arxiv.org/abs/2603.05573)
 
 ## Instruction
 
